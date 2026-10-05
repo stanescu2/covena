@@ -4,6 +4,7 @@
 # Scripturi shell – trebuie să rămână LF
 mvnw text eol=lf
 *.sh text eol=lf
+*.sql text eol=lf
 
 # Scripturi Windows – trebuie să rămână CRLF
 *.cmd text eol=crlf
