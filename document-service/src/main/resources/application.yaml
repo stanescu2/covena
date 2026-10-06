@@ -1,3 +1,13 @@
 spring:
   application:
     name: document-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/documents
+    username: ${DB_USERNAME:covena}
+    password: ${DB_PASSWORD:covena}
+
+management:
+  endpoint:
+    health:
+      show-details: always
