@@ -10,7 +10,9 @@
     </parent>
     <artifactId>document-service</artifactId>
     <name>Covena Document Service</name>
-    <description>Manages document uploads, metadata and processing status; publishes document lifecycle events to Kafka via the transactional outbox.</description>
+    <description>Manages document uploads, metadata and processing status; publishes document lifecycle events to Kafka
+        via the transactional outbox.
+    </description>
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
