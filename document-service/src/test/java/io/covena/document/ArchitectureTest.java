@@ -10,6 +10,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 @AnalyzeClasses(packages = "io.covena.document", importOptions = ImportOption.DoNotIncludeTests.class)
+@SuppressWarnings("unused")
 class ArchitectureTest {
     @ArchTest
     static final ArchRule DOMAIN_IS_INDEPENDENT_OF_FRAMEWORKS_AND_ADAPTERS = noClasses()
