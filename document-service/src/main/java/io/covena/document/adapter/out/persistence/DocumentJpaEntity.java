@@ -86,4 +86,8 @@ public class DocumentJpaEntity {
         this.status = status;
         this.failureReason = failureReason;
     }
+
+    public Long getVersion() {
+        return version;
+    }
 }
