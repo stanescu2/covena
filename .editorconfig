@@ -1,0 +1,37 @@
+root = true
+
+[*]
+charset = utf-8
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+max_line_length = 120
+
+[*.java]
+# no wildcard imports (flagged by Sonar)
+ij_java_class_count_to_use_import_on_demand = 999
+ij_java_names_count_to_use_import_on_demand = 999
+# method chains: one call per line when too long, wrapped before the dot
+ij_java_method_call_chain_wrap = on_every_item
+ij_java_wrap_first_method_in_call_chain = true
+ij_java_align_multiline_chained_methods = false
+# keep simple lambdas on one line: x -> x.name()
+ij_java_keep_simple_lambdas_in_one_line = true
+# keep manual line breaks
+ij_java_keep_line_breaks = true
+# long parameter lists: one parameter per line when too long
+ij_java_method_parameters_wrap = on_every_item
+ij_java_call_parameters_wrap = on_every_item
+# long string concatenations: wrap before the + operator
+ij_java_binary_operation_wrap = normal
+ij_java_binary_operation_sign_on_next_line = true
+
+[*.{yml,yaml,json,ts,html,scss}]
+indent_size = 2
+
+[*.md]
+# two trailing spaces = line break in Markdown
+trim_trailing_whitespace = false
+
+

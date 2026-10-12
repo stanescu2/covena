@@ -1,7 +1,13 @@
 spring:
   application:
     name: document-service
-
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+    hibernate:
+      ddl-auto: validate
   datasource:
     url: jdbc:postgresql://localhost:5433/documents
     username: ${DB_USERNAME:covena}
@@ -11,3 +17,8 @@ management:
   endpoint:
     health:
       show-details: always
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+    org.hibernate.orm.jdbc.bind: trace
