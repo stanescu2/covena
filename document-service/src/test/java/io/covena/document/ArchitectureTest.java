@@ -32,4 +32,13 @@ class ArchitectureTest {
         .byClassesThat()
         .resideInAPackage("..adapter.out.persistence..")
         .because("Document restore method can only be called from adapter out persistence package");
+
+    @ArchTest
+    static final ArchRule APPLICATION_IS_INDEPENDENT_OF_ADAPTERS = noClasses()
+        .that()
+        .resideInAPackage("..application..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage("..adapter..")
+        .because("Application classes should not depend on adapters");
 }
