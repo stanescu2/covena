@@ -18,7 +18,8 @@ import java.nio.file.Path;
 public class LocalFileSystemDocumentStorage implements DocumentContentStorage {
     private static final String CREATE_ERROR_MESSAGE_TEMPLATE = "Failed to create base directory %s for document storage";
     private static final String STORE_ERROR_MESSAGE_TEMPLATE = "Exception while storing document content with id %s";
-    private static final String STORE_SUCCESS_LOG_MESSAGE = "Document content with id {} stored successfully at location {}";
+    private static final String STORE_SUCCESS_LOG_MESSAGE = "Document content with id {} stored at {}";
+    private static final String DELETE_ERROR_MESSAGE_TEMPLATE = "Exception while deleting document storage with id %s";
 
     private static final Logger logger = LoggerFactory.getLogger(LocalFileSystemDocumentStorage.class);
 
@@ -42,6 +43,17 @@ public class LocalFileSystemDocumentStorage implements DocumentContentStorage {
             logger.debug(STORE_SUCCESS_LOG_MESSAGE, uuid, path);
         } catch (IOException e) {
             throw new DocumentStorageException(STORE_ERROR_MESSAGE_TEMPLATE.formatted(uuid), e);
+        }
+    }
+
+    @Override
+    public void delete(DocumentId id) {
+        String uuid = id.uuidValue().toString();
+        Path path = baseDir.resolve(uuid);
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException e) {
+            throw new DocumentStorageException(DELETE_ERROR_MESSAGE_TEMPLATE.formatted(uuid), e);
         }
     }
 }
