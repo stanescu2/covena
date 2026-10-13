@@ -11,7 +11,9 @@ import io.covena.document.domain.FileName;
 import io.covena.document.domain.FileSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -26,13 +28,19 @@ public class UploadDocumentService implements UploadDocumentUseCase {
     private final Clock clock;
     private final DocumentContentStorage storage;
     private final DocumentRepository documentRepository;
+    private final TransactionTemplate transactionTemplate;
+    private final ApplicationEventPublisher eventPublisher;
 
     public UploadDocumentService(DocumentContentStorage storage,
                                  DocumentRepository documentRepository,
-                                 Clock clock) {
+                                 Clock clock,
+                                 TransactionTemplate transactionTemplate,
+                                 ApplicationEventPublisher eventPublisher) {
         this.clock = clock;
         this.storage = storage;
         this.documentRepository = documentRepository;
+        this.transactionTemplate = transactionTemplate;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -44,7 +52,10 @@ public class UploadDocumentService implements UploadDocumentUseCase {
             new FileSize(command.fileSize()),
             Instant.now(clock).truncatedTo(ChronoUnit.MICROS));
         storage.store(document.getId(), command.fileStream());
-        documentRepository.save(document);
+        transactionTemplate.executeWithoutResult(status -> {
+            eventPublisher.publishEvent(new DocumentContentStored(document.getId()));
+            documentRepository.save(document);
+        });
         logger.debug(DOCUMENT_UPLOADED_LOG_MESSAGE, document.getId().uuidValue());
         return UploadedDocumentResult.from(document);
     }
