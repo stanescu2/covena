@@ -12,3 +12,8 @@ spring:
     url: jdbc:postgresql://localhost:5433/documents
     username: ${DB_USERNAME:covena}
     password: ${DB_PASSWORD:covena}
+
+covena:
+  storage:
+    local:
+      base-dir: ${COVENA_STORAGE_DIR:${user.home}/covena-data/documents}
