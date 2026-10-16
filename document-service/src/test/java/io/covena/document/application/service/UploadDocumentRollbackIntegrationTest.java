@@ -1,0 +1,108 @@
+package io.covena.document.application.service;
+
+import io.covena.document.application.port.in.UploadDocumentCommand;
+import io.covena.document.application.port.in.UploadDocumentUseCase;
+import io.covena.document.application.port.in.UploadedDocumentResult;
+import io.covena.document.application.port.out.DocumentRepository;
+import io.covena.document.domain.Document;
+import io.covena.document.domain.DocumentId;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
+
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+
+@SpringBootTest
+@Testcontainers
+class UploadDocumentRollbackIntegrationTest {
+    private static final byte[] CONTENT = "Acesta este un fișier de test".getBytes(StandardCharsets.UTF_8);
+    private static final String TEST_FILE_NAME = "contract.pdf";
+
+    @Container
+    @ServiceConnection
+    static PostgreSQLContainer postgresqlContainer = new PostgreSQLContainer(DockerImageName
+        .parse("pgvector/pgvector:0.8.7-pg18-trixie")
+        .asCompatibleSubstituteFor("postgres"));
+
+    @TempDir
+    static Path tempDir;
+
+    @DynamicPropertySource
+    static void dynamicProperties(DynamicPropertyRegistry registry) {
+        registry.add("covena.storage.local.base-dir", () -> tempDir.toString());
+    }
+
+    @MockitoSpyBean
+    private DocumentRepository documentRepository;
+
+    @Autowired
+    UploadDocumentUseCase useCase;
+
+    private InputStream content;
+    private final ArgumentCaptor<Document> documentCaptor = ArgumentCaptor.forClass(Document.class);
+
+    @BeforeEach
+    void setUp() {
+        content = new ByteArrayInputStream(CONTENT);
+    }
+
+    @Test
+    void shouldKeepStoredContentWhenUploadCommits() {
+        //given
+        var command = new UploadDocumentCommand(TEST_FILE_NAME, CONTENT.length, "application/pdf", content);
+
+        //when
+        UploadedDocumentResult result = useCase.uploadDocument(command);
+
+        //then
+        DocumentId id = result.id();
+        UUID uuid = id.uuidValue();
+        var testFilePath = tempDir.resolve(uuid.toString());
+        assertThat(documentRepository.findById(id)).get().extracting(Document::getId).isEqualTo(id);
+        assertThat(testFilePath).hasBinaryContent(CONTENT);
+    }
+
+    @Test
+    void shouldDeleteStoredContentWhenUploadRollsBack() {
+        //given
+        var command = new UploadDocumentCommand(TEST_FILE_NAME, CONTENT.length, "application/pdf", content);
+        doThrow(new OptimisticLockingFailureException("simulated database failure"))
+            .when(documentRepository)
+            .save(any(Document.class));
+
+        //when/then
+        assertThatThrownBy(() -> useCase.uploadDocument(command))
+            .isInstanceOf(OptimisticLockingFailureException.class)
+            .hasMessage("simulated database failure");
+
+        //then
+        verify(documentRepository).save(documentCaptor.capture());
+        Document document = documentCaptor.getValue();
+        DocumentId id = document.getId();
+        UUID uuid = id.uuidValue();
+        var testFilePath = tempDir.resolve(uuid.toString());
+        assertThat(testFilePath).doesNotExist();
+    }
+}
