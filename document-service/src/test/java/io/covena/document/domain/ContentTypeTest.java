@@ -30,7 +30,7 @@ class ContentTypeTest {
     @NullAndEmptySource
     @ValueSource(strings = {"image/png", "text/plain", "application/msword", "application/pdf "})
     void shouldRejectInvalidMimeType(String invalidMimeType) {
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+        var exception = assertThrows(InvalidDocumentException.class,
             () -> ContentType.fromMimeType(invalidMimeType));
         assertEquals("Unknown mime type: " + invalidMimeType, exception.getMessage());
     }

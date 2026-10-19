@@ -18,16 +18,22 @@ class FileSizeTest {
     }
 
     @ParameterizedTest
-    @ValueSource(longs = {Long.MIN_VALUE, -1, 0})
-    void shouldRejectFileSizeWhenNegativeOrZero(long invalidFileSize) {
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> new FileSize(invalidFileSize));
-        assertEquals("File size cannot be negative or zero", ex.getMessage());
+    @ValueSource(longs = {Long.MIN_VALUE, -1})
+    void shouldRejectFileSizeWhenNegative(long invalidFileSize) {
+        var ex = assertThrows(InvalidDocumentException.class, () -> new FileSize(invalidFileSize));
+        assertEquals("File size cannot be negative", ex.getMessage());
+    }
+
+    @Test
+    void shouldRejectEmptyFile() {
+        var ex = assertThrows(InvalidDocumentException.class, () -> new FileSize(0));
+        assertEquals("File must not be empty", ex.getMessage());
     }
 
     @Test
     void shouldRejectFileSizeWhenGreaterThanMaxSizeBytes() {
         long invalidFileSize = FileSize.MAX_SIZE_BYTES + 1;
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> new FileSize(invalidFileSize));
+        var ex = assertThrows(InvalidDocumentException.class, () -> new FileSize(invalidFileSize));
         assertEquals("File size cannot exceed " + FileSize.MAX_SIZE_BYTES + " bytes", ex.getMessage());
     }
 
