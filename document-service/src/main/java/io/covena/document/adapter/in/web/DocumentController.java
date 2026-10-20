@@ -27,9 +27,6 @@ public class DocumentController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<UploadResponse> uploadDocument(@RequestPart("file") MultipartFile file) throws IOException {
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
         try (InputStream inputStream = file.getInputStream()) {
             UploadDocumentCommand uploadDocumentCommand = new UploadDocumentCommand(file.getOriginalFilename(),
                 file.getSize(),
