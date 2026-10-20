@@ -51,7 +51,7 @@ public class UploadDocumentService implements UploadDocumentUseCase {
             ContentType.fromMimeType(command.mimeType()),
             new FileSize(command.fileSize()),
             Instant.now(clock).truncatedTo(ChronoUnit.MICROS));
-        storage.store(document.getId(), command.fileStream());
+        storage.store(document.getId(), command.content());
         transactionTemplate.executeWithoutResult(status -> {
             eventPublisher.publishEvent(new DocumentContentStored(document.getId()));
             documentRepository.save(document);

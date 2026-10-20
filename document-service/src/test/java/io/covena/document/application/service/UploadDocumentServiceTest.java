@@ -1,5 +1,6 @@
 package io.covena.document.application.service;
 
+import io.covena.document.application.port.in.ContentSource;
 import io.covena.document.application.port.in.UploadDocumentCommand;
 import io.covena.document.application.port.in.UploadedDocumentResult;
 import io.covena.document.application.port.out.DocumentContentStorage;
@@ -23,7 +24,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
@@ -55,7 +55,7 @@ class UploadDocumentServiceTest {
 
     private UploadDocumentService service;
     private final TransactionTemplate transactionTemplate = new TransactionTemplate(mock(PlatformTransactionManager.class));
-    private InputStream content;
+    private ContentSource source;
 
     @Captor
     private ArgumentCaptor<DocumentId> idCaptor;
@@ -67,19 +67,19 @@ class UploadDocumentServiceTest {
     @BeforeEach
     void setUp() {
         service = new UploadDocumentService(storage, documentRepository, clock, transactionTemplate, eventPublisher);
-        content = new ByteArrayInputStream(CONTENT);
+        source = () -> new ByteArrayInputStream(CONTENT);
     }
 
     @Test
     void shouldStoreContentAndSaveDocument() {
         //given
-        var command = new UploadDocumentCommand(TEST_FILE_NAME, CONTENT.length, "application/pdf", content);
+        var command = new UploadDocumentCommand(TEST_FILE_NAME, CONTENT.length, "application/pdf", source);
 
         //when
         UploadedDocumentResult result = service.uploadDocument(command);
 
         // then: content stored under the document id
-        verify(storage).store(idCaptor.capture(), eq(content));
+        verify(storage).store(idCaptor.capture(), eq(source));
         DocumentId documentId = idCaptor.getValue();
 
         // then: event published for the same document
@@ -90,8 +90,7 @@ class UploadDocumentServiceTest {
         verify(documentRepository).save(documentCaptor.capture());
         assertThat(documentCaptor.getValue())
             .extracting(Document::getId, Document::getFileName, Document::getStatus, Document::getUploadedAt)
-            .containsExactly(documentId, new FileName(TEST_FILE_NAME),
-                DocumentStatus.UPLOADED, NOW);
+            .containsExactly(documentId, new FileName(TEST_FILE_NAME), DocumentStatus.UPLOADED, NOW);
 
         // then: result describes the same document
         assertThat(result)
@@ -105,14 +104,14 @@ class UploadDocumentServiceTest {
     @Test
     void shouldPublishEventBeforeSaving() {
         //given
-        var command = new UploadDocumentCommand(TEST_FILE_NAME, CONTENT.length, "application/pdf", content);
+        var command = new UploadDocumentCommand(TEST_FILE_NAME, CONTENT.length, "application/pdf", source);
 
         //when
         service.uploadDocument(command);
 
         //then
         InOrder inOrder = Mockito.inOrder(storage, eventPublisher, documentRepository);
-        inOrder.verify(storage).store(any(DocumentId.class), any(InputStream.class));
+        inOrder.verify(storage).store(any(DocumentId.class), any(ContentSource.class));
         inOrder.verify(eventPublisher).publishEvent(any(DocumentContentStored.class));
         inOrder.verify(documentRepository).save(any(Document.class));
     }
@@ -120,7 +119,7 @@ class UploadDocumentServiceTest {
     @Test
     void shouldNotSaveWhenStorageFails() {
         //given
-        var command = new UploadDocumentCommand(TEST_FILE_NAME, CONTENT.length, "application/pdf", content);
+        var command = new UploadDocumentCommand(TEST_FILE_NAME, CONTENT.length, "application/pdf", source);
         doThrow(new DocumentStorageException("storage error", null)).when(storage).store(any(), any());
 
         //when/then
@@ -133,7 +132,7 @@ class UploadDocumentServiceTest {
         //given
         Instant testUploadedAt = Instant.parse("2026-10-14T10:00:00.123456789Z");
         var clockWithNanos = Clock.fixed(testUploadedAt, ZoneOffset.UTC);
-        var command = new UploadDocumentCommand(TEST_FILE_NAME, CONTENT.length, "application/pdf", content);
+        var command = new UploadDocumentCommand(TEST_FILE_NAME, CONTENT.length, "application/pdf", source);
         var serviceWithNanos = new UploadDocumentService(storage,
             documentRepository,
             clockWithNanos,

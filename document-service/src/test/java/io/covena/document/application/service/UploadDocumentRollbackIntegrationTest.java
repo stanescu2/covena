@@ -1,5 +1,6 @@
 package io.covena.document.application.service;
 
+import io.covena.document.application.port.in.ContentSource;
 import io.covena.document.application.port.in.UploadDocumentCommand;
 import io.covena.document.application.port.in.UploadDocumentUseCase;
 import io.covena.document.application.port.in.UploadedDocumentResult;
@@ -23,7 +24,6 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.UUID;
@@ -60,18 +60,18 @@ class UploadDocumentRollbackIntegrationTest {
     @Autowired
     UploadDocumentUseCase useCase;
 
-    private InputStream content;
+    private ContentSource source;
     private final ArgumentCaptor<Document> documentCaptor = ArgumentCaptor.forClass(Document.class);
 
     @BeforeEach
     void setUp() {
-        content = new ByteArrayInputStream(CONTENT);
+        source = () -> new ByteArrayInputStream(CONTENT);
     }
 
     @Test
     void shouldKeepStoredContentWhenUploadCommits() {
         //given
-        var command = new UploadDocumentCommand(TEST_FILE_NAME, CONTENT.length, "application/pdf", content);
+        var command = new UploadDocumentCommand(TEST_FILE_NAME, CONTENT.length, "application/pdf", source);
 
         //when
         UploadedDocumentResult result = useCase.uploadDocument(command);
@@ -87,7 +87,7 @@ class UploadDocumentRollbackIntegrationTest {
     @Test
     void shouldDeleteStoredContentWhenUploadRollsBack() {
         //given
-        var command = new UploadDocumentCommand(TEST_FILE_NAME, CONTENT.length, "application/pdf", content);
+        var command = new UploadDocumentCommand(TEST_FILE_NAME, CONTENT.length, "application/pdf", source);
         doThrow(new OptimisticLockingFailureException("simulated database failure"))
             .when(documentRepository)
             .save(any(Document.class));

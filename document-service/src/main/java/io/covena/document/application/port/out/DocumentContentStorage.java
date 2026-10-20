@@ -1,11 +1,10 @@
 package io.covena.document.application.port.out;
 
+import io.covena.document.application.port.in.ContentSource;
 import io.covena.document.domain.DocumentId;
 
-import java.io.InputStream;
-
 public interface DocumentContentStorage {
-    void store(DocumentId documentId, InputStream fileStream);
+    void store(DocumentId documentId, ContentSource content);
 
     void delete(DocumentId documentId);
 }

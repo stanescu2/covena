@@ -1,8 +1,6 @@
 package io.covena.document.application.port.in;
 
-import java.io.InputStream;
-
-public record UploadDocumentCommand(String fileName, long fileSize, String mimeType, InputStream fileStream) {
+public record UploadDocumentCommand(String fileName, long fileSize, String mimeType, ContentSource content) {
     @Override
     public String toString() {
         return "UploadDocumentCommand{" +

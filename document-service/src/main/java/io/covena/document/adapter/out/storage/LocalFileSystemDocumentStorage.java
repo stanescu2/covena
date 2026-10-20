@@ -1,5 +1,6 @@
 package io.covena.document.adapter.out.storage;
 
+import io.covena.document.application.port.in.ContentSource;
 import io.covena.document.application.port.out.DocumentContentStorage;
 import io.covena.document.application.port.out.DocumentStorageException;
 import io.covena.document.config.StorageProperties;
@@ -36,11 +37,11 @@ public class LocalFileSystemDocumentStorage implements DocumentContentStorage {
     }
 
     @Override
-    public void store(DocumentId id, InputStream fileStream) {
+    public void store(DocumentId id, ContentSource content) {
         String uuid = id.uuidValue().toString();
         Path path = baseDir.resolve(uuid);
-        try {
-            Files.copy(fileStream, path);
+        try (InputStream in = content.open()) {
+            Files.copy(in, path);
             logger.debug(STORE_SUCCESS_LOG_MESSAGE, uuid, path);
         } catch (IOException e) {
             throw new DocumentStorageException(STORE_ERROR_MESSAGE_TEMPLATE.formatted(uuid), e);

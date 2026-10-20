@@ -12,8 +12,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 
 @RestController
@@ -26,21 +24,18 @@ public class DocumentController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<UploadResponse> uploadDocument(@RequestPart("file") MultipartFile file) throws IOException {
-        try (InputStream inputStream = file.getInputStream()) {
-            UploadDocumentCommand uploadDocumentCommand = new UploadDocumentCommand(file.getOriginalFilename(),
-                file.getSize(),
-                file.getContentType(),
-                inputStream);
-
-            UploadedDocumentResult uploadedDocumentResult = uploadDocumentUseCase.uploadDocument(uploadDocumentCommand);
-            UploadResponse uploadResponse = UploadResponse.from(uploadedDocumentResult);
-            URI location = ServletUriComponentsBuilder
-                .fromCurrentRequest()
-                .path("/{id}")
-                .buildAndExpand(uploadResponse.id())
-                .toUri();
-            return ResponseEntity.created(location).body(uploadResponse);
-        }
+    public ResponseEntity<UploadResponse> uploadDocument(@RequestPart("file") MultipartFile file) {
+        UploadDocumentCommand uploadDocumentCommand = new UploadDocumentCommand(file.getOriginalFilename(),
+            file.getSize(),
+            file.getContentType(),
+            file::getInputStream);
+        UploadedDocumentResult uploadedDocumentResult = uploadDocumentUseCase.uploadDocument(uploadDocumentCommand);
+        UploadResponse uploadResponse = UploadResponse.from(uploadedDocumentResult);
+        URI location = ServletUriComponentsBuilder
+            .fromCurrentRequest()
+            .path("/{id}")
+            .buildAndExpand(uploadResponse.id())
+            .toUri();
+        return ResponseEntity.created(location).body(uploadResponse);
     }
 }
