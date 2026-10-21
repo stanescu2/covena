@@ -65,7 +65,7 @@ class DocumentControllerTest {
         assertThat(captor.getValue())
             .extracting(UploadDocumentCommand::fileName,
                 UploadDocumentCommand::fileSize,
-                UploadDocumentCommand::mimeType)
+                UploadDocumentCommand::declaredMimeType)
             .containsExactly(FILE_NAME, (long) CONTENT.length, "application/pdf");
     }
 

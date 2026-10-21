@@ -48,7 +48,7 @@ public class UploadDocumentService implements UploadDocumentUseCase {
         logger.debug(UPLOAD_COMMAND_RECEIVED_LOG_MESSAGE, command);
 
         Document document = Document.upload(new FileName(command.fileName()),
-            ContentType.fromMimeType(command.mimeType()),
+            ContentType.fromMimeType(command.declaredMimeType()),
             new FileSize(command.fileSize()),
             Instant.now(clock).truncatedTo(ChronoUnit.MICROS));
         storage.store(document.getId(), command.content());
