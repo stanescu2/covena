@@ -143,8 +143,8 @@ class DocumentControllerTest {
         var testPdfFile = new MockMultipartFile("file", FILE_NAME, PDF.getMimeType(), CONTENT);
         var documentId = DocumentId.newId();
         when(useCase.uploadDocument(any())).thenThrow(new InvalidDocumentStatusException(documentId,
-            DocumentStatus.READY,
-            DocumentStatus.UPLOADED));
+            DocumentStatus.UPLOADED,
+            DocumentStatus.READY));
 
         //when/then
         mockMvc
@@ -154,7 +154,7 @@ class DocumentControllerTest {
             .andExpect(jsonPath("$.status").value(409))
             .andExpect(jsonPath("$.title").value("Invalid document status transition"))
             .andExpect(jsonPath("$.detail").value(
-                "For documentId " + documentId + " expected document status UPLOADED but found READY"));
+                "For documentId " + documentId.uuidValue() + " expected document status UPLOADED but found READY"));
     }
 
 }

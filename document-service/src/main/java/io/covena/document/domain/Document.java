@@ -110,7 +110,7 @@ public class Document {
 
     private void requireStatus(DocumentStatus required) {
         if (status != required) {
-            throw new InvalidDocumentStatusException(getId(), status, required);
+            throw new InvalidDocumentStatusException(getId(), required, status);
         }
     }
 

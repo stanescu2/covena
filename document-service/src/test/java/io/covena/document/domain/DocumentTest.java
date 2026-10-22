@@ -124,6 +124,10 @@ class DocumentTest {
         assertEquals(PROCESSING, exception.getDocumentStatus());
         assertEquals(UPLOADED, exception.getExpectedDocumentStatus());
         assertEquals(PROCESSING, document.getStatus());
+        assertEquals(
+            "For documentId " + document.getId().uuidValue()
+                + " expected document status UPLOADED but found PROCESSING",
+            exception.getMessage());
     }
 
     @Test
@@ -135,6 +139,10 @@ class DocumentTest {
         assertEquals(FAILED, exception.getDocumentStatus());
         assertEquals(PROCESSING, exception.getExpectedDocumentStatus());
         assertEquals(FAILED, document.getStatus());
+        assertEquals(
+            "For documentId " + document.getId().uuidValue()
+                + " expected document status PROCESSING but found FAILED",
+            exception.getMessage());
     }
 
     @Test
@@ -146,6 +154,10 @@ class DocumentTest {
         assertEquals(FAILED, exception.getDocumentStatus());
         assertEquals(PROCESSING, exception.getExpectedDocumentStatus());
         assertEquals(FAILED, document.getStatus());
+        assertEquals(
+            "For documentId " + document.getId().uuidValue()
+                + " expected document status PROCESSING but found FAILED",
+            exception.getMessage());
     }
 
     @Test
@@ -155,6 +167,10 @@ class DocumentTest {
         assertEquals(PROCESSING, exception.getDocumentStatus());
         assertEquals(FAILED, exception.getExpectedDocumentStatus());
         assertEquals(PROCESSING, document.getStatus());
+        assertEquals(
+            "For documentId " + document.getId().uuidValue()
+                + " expected document status FAILED but found PROCESSING",
+            exception.getMessage());
     }
 
     @ParameterizedTest
