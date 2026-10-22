@@ -37,7 +37,7 @@ import static org.mockito.Mockito.verify;
 
 @SpringBootTest
 @Testcontainers
-class UploadDocumentRollbackIntegrationTest {
+class UploadDocumentRollbackIT {
     private static final byte[] PDF_CONTENT = "%PDF-1.7\nAcesta este un fișier de test".getBytes(StandardCharsets.UTF_8);
     private static final String TEST_FILE_NAME = "contract.pdf";
 

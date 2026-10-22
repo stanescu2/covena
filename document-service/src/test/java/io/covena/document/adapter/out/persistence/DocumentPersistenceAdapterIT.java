@@ -31,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DataJpaTest(showSql = false)
 @Testcontainers
 @Import({DocumentMapper.class, DocumentPersistenceAdapter.class})
-class DocumentPersistenceAdapterTest {
+class DocumentPersistenceAdapterIT {
     private static final String UPLOADED_AT = "2026-10-10T10:15:30.123456Z";
 
     @Container
