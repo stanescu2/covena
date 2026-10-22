@@ -22,14 +22,14 @@ class FileNameTest {
     @NullAndEmptySource
     @ValueSource(strings = {" ", "  ", "\t", "\n", "\r"})
     void shouldRejectNullOrBlankName(String name) {
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> new FileName(name));
+        var ex = assertThrows(InvalidDocumentException.class, () -> new FileName(name));
         assertEquals("Name cannot be null or empty", ex.getMessage());
     }
 
     @Test
     void shouldRejectNameLongerThanMaxLength() {
         String longName = "a".repeat(256);
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> new FileName(longName));
+        var ex = assertThrows(InvalidDocumentException.class, () -> new FileName(longName));
         assertEquals("Name cannot be longer than " + FileName.MAX_LENGTH + " characters", ex.getMessage());
     }
 
@@ -43,14 +43,14 @@ class FileNameTest {
     @Test
     void shouldRejectNameContainingSlash() {
         String slashName = "a/b/c";
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> new FileName(slashName));
+        var ex = assertThrows(InvalidDocumentException.class, () -> new FileName(slashName));
         assertEquals("Name cannot contain '/' or '\\' characters", ex.getMessage());
     }
 
     @Test
     void shouldRejectNameContainingBackslash() {
         String backSlashName = "a\\b\\c";
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> new FileName(backSlashName));
+        var ex = assertThrows(InvalidDocumentException.class, () -> new FileName(backSlashName));
         assertEquals("Name cannot contain '/' or '\\' characters", ex.getMessage());
     }
 

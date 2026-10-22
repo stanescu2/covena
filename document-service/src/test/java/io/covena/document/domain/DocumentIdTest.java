@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class DocumentIdTest {
     @Test
     void shouldRejectNullUuid() {
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> new DocumentId(null));
+        var ex = assertThrows(IllegalArgumentException.class, () -> new DocumentId(null));
         assertEquals("UUID cannot be null", ex.getMessage());
     }
 
@@ -56,7 +56,7 @@ class DocumentIdTest {
 
     DocumentId serializeDeserializeDocumentId(DocumentId documentId) throws IOException, ClassNotFoundException {
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        var baos = new ByteArrayOutputStream();
         try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
             oos.writeObject(documentId);
         }

@@ -15,7 +15,7 @@ public enum ContentType {
                 return contentType;
             }
         }
-        throw new IllegalArgumentException("Unknown mime type: " + mimeType);
+        throw new InvalidDocumentException("Unknown mime type: " + mimeType);
     }
 
     public String getMimeType() {

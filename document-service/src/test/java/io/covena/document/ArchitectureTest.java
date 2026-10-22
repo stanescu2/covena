@@ -41,4 +41,13 @@ class ArchitectureTest {
         .dependOnClassesThat()
         .resideInAnyPackage("..adapter..")
         .because("Application classes should not depend on adapters");
+
+    @ArchTest
+    static final ArchRule APPLICATION_IS_INDEPENDENT_OF_WEB = noClasses()
+        .that()
+        .resideInAPackage("..application..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage("org.springframework.web..", "org.springframework.http..", "jakarta.servlet..")
+        .because("Application classes should not depend on web or HTTP classes");
 }

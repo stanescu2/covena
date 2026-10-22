@@ -5,13 +5,13 @@ public record FileName(String name) {
 
     public FileName {
         if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("Name cannot be null or empty");
+            throw new InvalidDocumentException("Name cannot be null or empty");
         }
         if (name.length() > MAX_LENGTH) {
-            throw new IllegalArgumentException("Name cannot be longer than " + MAX_LENGTH + " characters");
+            throw new InvalidDocumentException("Name cannot be longer than " + MAX_LENGTH + " characters");
         }
         if (name.contains("/") || name.contains("\\")) {
-            throw new IllegalArgumentException("Name cannot contain '/' or '\\' characters");
+            throw new InvalidDocumentException("Name cannot contain '/' or '\\' characters");
         }
     }
 }
