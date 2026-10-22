@@ -28,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.UUID;
 
+import static io.covena.document.domain.ContentType.PDF;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -37,7 +38,7 @@ import static org.mockito.Mockito.verify;
 @SpringBootTest
 @Testcontainers
 class UploadDocumentRollbackIntegrationTest {
-    private static final byte[] CONTENT = "Acesta este un fișier de test".getBytes(StandardCharsets.UTF_8);
+    private static final byte[] PDF_CONTENT = "%PDF-1.7\nAcesta este un fișier de test".getBytes(StandardCharsets.UTF_8);
     private static final String TEST_FILE_NAME = "contract.pdf";
 
     @Container
@@ -65,13 +66,13 @@ class UploadDocumentRollbackIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        source = () -> new ByteArrayInputStream(CONTENT);
+        source = () -> new ByteArrayInputStream(PDF_CONTENT);
     }
 
     @Test
     void shouldKeepStoredContentWhenUploadCommits() {
         //given
-        var command = new UploadDocumentCommand(TEST_FILE_NAME, CONTENT.length, "application/pdf", source);
+        var command = new UploadDocumentCommand(TEST_FILE_NAME, PDF_CONTENT.length, PDF.getMimeType(), source);
 
         //when
         UploadedDocumentResult result = useCase.uploadDocument(command);
@@ -81,13 +82,13 @@ class UploadDocumentRollbackIntegrationTest {
         UUID uuid = id.uuidValue();
         var testFilePath = tempDir.resolve(uuid.toString());
         assertThat(documentRepository.findById(id)).get().extracting(Document::getId).isEqualTo(id);
-        assertThat(testFilePath).hasBinaryContent(CONTENT);
+        assertThat(testFilePath).hasBinaryContent(PDF_CONTENT);
     }
 
     @Test
     void shouldDeleteStoredContentWhenUploadRollsBack() {
         //given
-        var command = new UploadDocumentCommand(TEST_FILE_NAME, CONTENT.length, "application/pdf", source);
+        var command = new UploadDocumentCommand(TEST_FILE_NAME, PDF_CONTENT.length, PDF.getMimeType(), source);
         doThrow(new OptimisticLockingFailureException("simulated database failure"))
             .when(documentRepository)
             .save(any(Document.class));

@@ -3,6 +3,7 @@ package io.covena.document.application.service;
 import io.covena.document.application.port.in.UploadDocumentCommand;
 import io.covena.document.application.port.in.UploadDocumentUseCase;
 import io.covena.document.application.port.in.UploadedDocumentResult;
+import io.covena.document.application.port.out.ContentTypeDetector;
 import io.covena.document.application.port.out.DocumentContentStorage;
 import io.covena.document.application.port.out.DocumentRepository;
 import io.covena.document.domain.ContentType;
@@ -24,20 +25,24 @@ public class UploadDocumentService implements UploadDocumentUseCase {
     private static final Logger logger = LoggerFactory.getLogger(UploadDocumentService.class);
     private static final String UPLOAD_COMMAND_RECEIVED_LOG_MESSAGE = "Upload document command received: {}";
     private static final String DOCUMENT_UPLOADED_LOG_MESSAGE = "Document uploaded: {}";
+    private static final String MIME_TYPE_MISMATCH_LOG_MESSAGE = "Declared MIME type {} differs from detected {} for file {}";
 
     private final Clock clock;
     private final DocumentContentStorage storage;
+    private final ContentTypeDetector detector;
     private final DocumentRepository documentRepository;
     private final TransactionTemplate transactionTemplate;
     private final ApplicationEventPublisher eventPublisher;
 
     public UploadDocumentService(DocumentContentStorage storage,
+                                 ContentTypeDetector detector,
                                  DocumentRepository documentRepository,
                                  Clock clock,
                                  TransactionTemplate transactionTemplate,
                                  ApplicationEventPublisher eventPublisher) {
-        this.clock = clock;
         this.storage = storage;
+        this.detector = detector;
+        this.clock = clock;
         this.documentRepository = documentRepository;
         this.transactionTemplate = transactionTemplate;
         this.eventPublisher = eventPublisher;
@@ -46,10 +51,20 @@ public class UploadDocumentService implements UploadDocumentUseCase {
     @Override
     public UploadedDocumentResult uploadDocument(UploadDocumentCommand command) {
         logger.debug(UPLOAD_COMMAND_RECEIVED_LOG_MESSAGE, command);
+        var fileName = new FileName(command.fileName());
+        var fileSize = new FileSize(command.fileSize());
 
-        Document document = Document.upload(new FileName(command.fileName()),
-            ContentType.fromMimeType(command.declaredMimeType()),
-            new FileSize(command.fileSize()),
+        var detectedMimeType = detector.detectContentType(command.content(), command.fileName());
+        if (!detectedMimeType.equalsIgnoreCase(command.declaredMimeType())) {
+            logger.debug(MIME_TYPE_MISMATCH_LOG_MESSAGE,
+                command.declaredMimeType(),
+                detectedMimeType,
+                command.fileName());
+        }
+        var contentType = ContentType.fromMimeType(detectedMimeType);
+        Document document = Document.upload(fileName,
+            contentType,
+            fileSize,
             Instant.now(clock).truncatedTo(ChronoUnit.MICROS));
         storage.store(document.getId(), command.content());
         transactionTemplate.executeWithoutResult(status -> {

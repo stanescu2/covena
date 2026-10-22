@@ -21,6 +21,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 
+import static io.covena.document.domain.ContentType.PDF;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.endsWith;
 import static org.mockito.ArgumentMatchers.any;
@@ -36,7 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(DocumentController.class)
 class DocumentControllerTest {
     private static final byte[] CONTENT = "Acesta este un fișier de test".getBytes(StandardCharsets.UTF_8);
-    private static final byte[] EMPTY_FILE = new byte[0];
+    private static final byte[] EMPTY_CONTENT = new byte[0];
     private static final String FILE_NAME = "TestPdfFile.pdf";
     private static final Instant NOW = Instant.parse("2026-10-14T10:00:00Z");
 
@@ -50,7 +51,7 @@ class DocumentControllerTest {
     void shouldPassFileDataToUseCase() throws Exception {
         //given
         var captor = ArgumentCaptor.forClass(UploadDocumentCommand.class);
-        var testPdfFile = new MockMultipartFile("file", FILE_NAME, "application/pdf", CONTENT);
+        var testPdfFile = new MockMultipartFile("file", FILE_NAME, PDF.getMimeType(), CONTENT);
         var result = new UploadedDocumentResult(DocumentId.newId(),
             new FileName(FILE_NAME),
             DocumentStatus.UPLOADED,
@@ -66,13 +67,13 @@ class DocumentControllerTest {
             .extracting(UploadDocumentCommand::fileName,
                 UploadDocumentCommand::fileSize,
                 UploadDocumentCommand::declaredMimeType)
-            .containsExactly(FILE_NAME, (long) CONTENT.length, "application/pdf");
+            .containsExactly(FILE_NAME, (long) CONTENT.length, PDF.getMimeType());
     }
 
     @Test
     void shouldReturn201ForValidFile() throws Exception {
         //given
-        var testPdfFile = new MockMultipartFile("file", FILE_NAME, "application/pdf", CONTENT);
+        var testPdfFile = new MockMultipartFile("file", FILE_NAME, PDF.getMimeType(), CONTENT);
         var result = new UploadedDocumentResult(DocumentId.newId(),
             new FileName(FILE_NAME),
             DocumentStatus.UPLOADED,
@@ -94,7 +95,7 @@ class DocumentControllerTest {
     @Test
     void shouldReturn400WhenFilePartIsMissing() throws Exception {
         //given
-        var wrongPart = new MockMultipartFile("doc", FILE_NAME, "application/pdf", CONTENT);
+        var wrongPart = new MockMultipartFile("doc", FILE_NAME, PDF.getMimeType(), CONTENT);
 
         //when/then
         mockMvc
@@ -108,7 +109,7 @@ class DocumentControllerTest {
     @Test
     void shouldReturn500WithGenericDetailWhenUnexpectedErrorOccurs() throws Exception {
         //given
-        var testPdfFile = new MockMultipartFile("file", FILE_NAME, "application/pdf", CONTENT);
+        var testPdfFile = new MockMultipartFile("file", FILE_NAME, PDF.getMimeType(), CONTENT);
         when(useCase.uploadDocument(any())).thenThrow(new DocumentStorageException("disk full", null));
 
         //when/then
@@ -123,7 +124,7 @@ class DocumentControllerTest {
     @Test
     void shouldReturn400WithDetailWhenDocumentIsInvalid() throws Exception {
         //given
-        var emptyTestPdfFile = new MockMultipartFile("file", FILE_NAME, "application/pdf", EMPTY_FILE);
+        var emptyTestPdfFile = new MockMultipartFile("file", FILE_NAME, PDF.getMimeType(), EMPTY_CONTENT);
         when(useCase.uploadDocument(any())).thenThrow(new InvalidDocumentException("File must not be empty"));
 
         //when/then
@@ -139,7 +140,7 @@ class DocumentControllerTest {
     @Test
     void shouldReturn409WhenDocumentStatusTransitionIsInvalid() throws Exception {
         //given
-        var testPdfFile = new MockMultipartFile("file", FILE_NAME, "application/pdf", CONTENT);
+        var testPdfFile = new MockMultipartFile("file", FILE_NAME, PDF.getMimeType(), CONTENT);
         var documentId = DocumentId.newId();
         when(useCase.uploadDocument(any())).thenThrow(new InvalidDocumentStatusException(documentId,
             DocumentStatus.READY,
