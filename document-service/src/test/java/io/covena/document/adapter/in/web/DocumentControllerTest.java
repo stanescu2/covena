@@ -10,8 +10,11 @@ import io.covena.document.domain.FileName;
 import io.covena.document.domain.InvalidDocumentException;
 import io.covena.document.domain.InvalidDocumentStatusException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
@@ -35,6 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(DocumentController.class)
+@ExtendWith(OutputCaptureExtension.class)
 class DocumentControllerTest {
     private static final byte[] CONTENT = "Acesta este un fișier de test".getBytes(StandardCharsets.UTF_8);
     private static final byte[] EMPTY_CONTENT = new byte[0];
@@ -107,7 +111,7 @@ class DocumentControllerTest {
     }
 
     @Test
-    void shouldReturn500WithGenericDetailWhenUnexpectedErrorOccurs() throws Exception {
+    void shouldReturn500WithGenericDetailWhenUnexpectedErrorOccurs(CapturedOutput output) throws Exception {
         //given
         var testPdfFile = new MockMultipartFile("file", FILE_NAME, PDF.getMimeType(), CONTENT);
         when(useCase.uploadDocument(any())).thenThrow(new DocumentStorageException("disk full", null));
@@ -119,6 +123,7 @@ class DocumentControllerTest {
             .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
             .andExpect(jsonPath("$.status").value(500))
             .andExpect(jsonPath("$.detail").value("An unexpected error occurred"));
+        assertThat(output).contains("Unexpected error").contains("disk full");
     }
 
     @Test
@@ -138,7 +143,7 @@ class DocumentControllerTest {
     }
 
     @Test
-    void shouldReturn409WhenDocumentStatusTransitionIsInvalid() throws Exception {
+    void shouldReturn409WhenDocumentStatusTransitionIsInvalid(CapturedOutput output) throws Exception {
         //given
         var testPdfFile = new MockMultipartFile("file", FILE_NAME, PDF.getMimeType(), CONTENT);
         var documentId = DocumentId.newId();
@@ -156,5 +161,6 @@ class DocumentControllerTest {
             .andExpect(jsonPath("$.detail").value(
                 "For documentId " + documentId.uuidValue() + " expected document status UPLOADED but found READY"))
             .andExpect(jsonPath("$.documentId").value(documentId.uuidValue().toString()));
+        assertThat(output).contains("Invalid document status transition");
     }
 }
