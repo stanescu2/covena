@@ -154,7 +154,7 @@ class DocumentControllerTest {
             .andExpect(jsonPath("$.status").value(409))
             .andExpect(jsonPath("$.title").value("Invalid document status transition"))
             .andExpect(jsonPath("$.detail").value(
-                "For documentId " + documentId.uuidValue() + " expected document status UPLOADED but found READY"));
+                "For documentId " + documentId.uuidValue() + " expected document status UPLOADED but found READY"))
+            .andExpect(jsonPath("$.documentId").value(documentId.uuidValue().toString()));
     }
-
 }

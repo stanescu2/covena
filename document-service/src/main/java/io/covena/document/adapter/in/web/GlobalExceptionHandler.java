@@ -16,6 +16,7 @@ class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         logger.warn("Invalid document status transition: " + e.getMessage());
         var problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
         problemDetail.setTitle("Invalid document status transition");
+        problemDetail.setProperty("documentId", e.getDocumentId().uuidValue().toString());
         return problemDetail;
     }
 
