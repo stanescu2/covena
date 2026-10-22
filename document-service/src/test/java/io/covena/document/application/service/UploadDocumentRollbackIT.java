@@ -1,5 +1,6 @@
 package io.covena.document.application.service;
 
+import io.covena.document.TestcontainersConfiguration;
 import io.covena.document.application.port.in.ContentSource;
 import io.covena.document.application.port.in.UploadDocumentCommand;
 import io.covena.document.application.port.in.UploadDocumentUseCase;
@@ -13,15 +14,11 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Import;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
@@ -36,16 +33,10 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
 @SpringBootTest
-@Testcontainers
+@Import(TestcontainersConfiguration.class)
 class UploadDocumentRollbackIT {
     private static final byte[] PDF_CONTENT = "%PDF-1.7\nAcesta este un fișier de test".getBytes(StandardCharsets.UTF_8);
     private static final String TEST_FILE_NAME = "contract.pdf";
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer postgresqlContainer = new PostgreSQLContainer(DockerImageName
-        .parse("pgvector/pgvector:0.8.7-pg18-trixie")
-        .asCompatibleSubstituteFor("postgres"));
 
     @TempDir
     static Path tempDir;
