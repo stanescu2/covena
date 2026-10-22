@@ -2,6 +2,7 @@ name: covena
 
 services:
   postgres:
+    # Keep in sync with TestcontainersConfiguration (document-service tests)
     image: pgvector/pgvector:0.8.7-pg18-trixie
     environment:
       POSTGRES_DB: ${postgres_db}
@@ -10,8 +11,8 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql                     
-      - ./postgres/init:/docker-entrypoint-initdb.d:ro      
+      - postgres_data:/var/lib/postgresql
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
