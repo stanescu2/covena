@@ -5,9 +5,11 @@ import io.covena.document.application.port.in.UploadDocumentUseCase;
 import io.covena.document.application.port.in.UploadedDocumentResult;
 import io.covena.document.application.port.out.ContentTypeDetector;
 import io.covena.document.application.port.out.DocumentContentStorage;
+import io.covena.document.application.port.out.DocumentEventOutbox;
 import io.covena.document.application.port.out.DocumentRepository;
 import io.covena.document.domain.ContentType;
 import io.covena.document.domain.Document;
+import io.covena.document.domain.DocumentUploaded;
 import io.covena.document.domain.FileName;
 import io.covena.document.domain.FileSize;
 import org.slf4j.Logger;
@@ -31,6 +33,7 @@ public class UploadDocumentService implements UploadDocumentUseCase {
     private final DocumentContentStorage storage;
     private final ContentTypeDetector detector;
     private final DocumentRepository documentRepository;
+    private final DocumentEventOutbox eventOutbox;
     private final TransactionTemplate transactionTemplate;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -38,12 +41,14 @@ public class UploadDocumentService implements UploadDocumentUseCase {
                                  ContentTypeDetector detector,
                                  DocumentRepository documentRepository,
                                  Clock clock,
+                                 DocumentEventOutbox eventOutbox,
                                  TransactionTemplate transactionTemplate,
                                  ApplicationEventPublisher eventPublisher) {
         this.storage = storage;
         this.detector = detector;
         this.clock = clock;
         this.documentRepository = documentRepository;
+        this.eventOutbox = eventOutbox;
         this.transactionTemplate = transactionTemplate;
         this.eventPublisher = eventPublisher;
     }
@@ -62,14 +67,17 @@ public class UploadDocumentService implements UploadDocumentUseCase {
                 command.fileName());
         }
         var contentType = ContentType.fromMimeType(detectedMimeType);
-        Document document = Document.upload(fileName,
+        var document = Document.upload(fileName,
             contentType,
             fileSize,
             Instant.now(clock).truncatedTo(ChronoUnit.MICROS));
         storage.store(document.getId(), command.content());
+
+        var event = DocumentUploaded.from(document);
         transactionTemplate.executeWithoutResult(status -> {
             eventPublisher.publishEvent(new DocumentContentStored(document.getId()));
             documentRepository.save(document);
+            eventOutbox.append(event);
         });
         logger.debug(DOCUMENT_UPLOADED_LOG_MESSAGE, document.getId().uuidValue());
         return UploadedDocumentResult.from(document);
