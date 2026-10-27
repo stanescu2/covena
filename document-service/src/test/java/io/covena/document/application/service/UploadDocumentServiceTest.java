@@ -5,11 +5,13 @@ import io.covena.document.application.port.in.UploadDocumentCommand;
 import io.covena.document.application.port.in.UploadedDocumentResult;
 import io.covena.document.application.port.out.ContentTypeDetector;
 import io.covena.document.application.port.out.DocumentContentStorage;
+import io.covena.document.application.port.out.DocumentEventOutbox;
 import io.covena.document.application.port.out.DocumentRepository;
 import io.covena.document.application.port.out.DocumentStorageException;
 import io.covena.document.domain.Document;
 import io.covena.document.domain.DocumentId;
 import io.covena.document.domain.DocumentStatus;
+import io.covena.document.domain.DocumentUploaded;
 import io.covena.document.domain.FileName;
 import io.covena.document.domain.InvalidDocumentException;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,6 +62,8 @@ class UploadDocumentServiceTest {
     private DocumentRepository documentRepository;
     @Mock
     private ApplicationEventPublisher eventPublisher;
+    @Mock
+    private DocumentEventOutbox eventOutbox;
 
     private UploadDocumentService service;
     private final TransactionTemplate transactionTemplate = new TransactionTemplate(mock(PlatformTransactionManager.class));
@@ -71,6 +75,8 @@ class UploadDocumentServiceTest {
     private ArgumentCaptor<Document> documentCaptor;
     @Captor
     private ArgumentCaptor<DocumentContentStored> eventCaptor;
+    @Captor
+    private ArgumentCaptor<DocumentUploaded> outboxEventCaptor;
 
     private void givenDetectedMimeType(String mimeType) {
         when(detector.detectContentType(source, TEST_FILE_NAME)).thenReturn(mimeType);
@@ -82,6 +88,7 @@ class UploadDocumentServiceTest {
             detector,
             documentRepository,
             clock,
+            eventOutbox,
             transactionTemplate,
             eventPublisher);
         source = () -> new ByteArrayInputStream(CONTENT);
@@ -124,7 +131,7 @@ class UploadDocumentServiceTest {
     }
 
     @Test
-    void shouldPublishEventBeforeSaving() {
+    void shouldStorePublishSaveAndAppendInOrder() {
         //given
         var command = new UploadDocumentCommand(TEST_FILE_NAME, CONTENT.length, PDF.getMimeType(), source);
         givenDetectedMimeType(PDF.getMimeType());
@@ -133,10 +140,11 @@ class UploadDocumentServiceTest {
         service.uploadDocument(command);
 
         //then
-        InOrder inOrder = Mockito.inOrder(storage, eventPublisher, documentRepository);
+        InOrder inOrder = Mockito.inOrder(storage, eventPublisher, documentRepository, eventOutbox);
         inOrder.verify(storage).store(any(DocumentId.class), any(ContentSource.class));
         inOrder.verify(eventPublisher).publishEvent(any(DocumentContentStored.class));
         inOrder.verify(documentRepository).save(any(Document.class));
+        inOrder.verify(eventOutbox).append(any(DocumentUploaded.class));
     }
 
     @Test
@@ -148,7 +156,7 @@ class UploadDocumentServiceTest {
 
         //when/then
         assertThatThrownBy(() -> service.uploadDocument(command)).isExactlyInstanceOf(DocumentStorageException.class);
-        verifyNoInteractions(eventPublisher, documentRepository);
+        verifyNoInteractions(eventPublisher, documentRepository, eventOutbox);
     }
 
     @Test
@@ -161,6 +169,7 @@ class UploadDocumentServiceTest {
             detector,
             documentRepository,
             clockWithNanos,
+            eventOutbox,
             transactionTemplate,
             eventPublisher);
         givenDetectedMimeType(PDF.getMimeType());
@@ -182,7 +191,7 @@ class UploadDocumentServiceTest {
         assertThatThrownBy(() -> service.uploadDocument(command))
             .isExactlyInstanceOf(InvalidDocumentException.class)
             .hasMessage("Unknown mime type: " + TEXT_MIME_TYPE);
-        verifyNoInteractions(storage, eventPublisher, documentRepository);
+        verifyNoInteractions(storage, eventPublisher, documentRepository, eventOutbox);
     }
 
     @Test
@@ -197,6 +206,44 @@ class UploadDocumentServiceTest {
         assertThatThrownBy(() -> service.uploadDocument(command))
             .isExactlyInstanceOf(InvalidDocumentException.class)
             .hasMessage("File must not be empty");
-        verifyNoInteractions(detector, storage, eventPublisher, documentRepository);
+        verifyNoInteractions(detector, storage, eventPublisher, documentRepository, eventOutbox);
+    }
+
+    @Test
+    void shouldAppendDocumentUploadedToOutbox() {
+        //given
+        var command = new UploadDocumentCommand(TEST_FILE_NAME, CONTENT.length, PDF.getMimeType(), source);
+        givenDetectedMimeType(PDF.getMimeType());
+
+        //when
+        service.uploadDocument(command);
+
+        //then
+        verify(storage).store(idCaptor.capture(), any());
+        var documentId = idCaptor.getValue();
+        verify(eventOutbox).append(outboxEventCaptor.capture());
+        var event = outboxEventCaptor.getValue();
+        assertThat(event)
+            .extracting(DocumentUploaded::id,
+                e -> e.fileName().name(),
+                e -> e.fileSize().fileSizeBytes(),
+                DocumentUploaded::contentType,
+                DocumentUploaded::uploadedAt)
+            .containsExactly(documentId, TEST_FILE_NAME, (long) CONTENT.length, PDF, NOW);
+    }
+
+    @Test
+    void shouldNotAppendToOutboxWhenSaveFails() {
+        //given
+        var command = new UploadDocumentCommand(TEST_FILE_NAME, CONTENT.length, PDF.getMimeType(), source);
+        givenDetectedMimeType(PDF.getMimeType());
+        doThrow(new RuntimeException("database unavailable"))
+            .when(documentRepository).save(any());
+
+        //when / then
+        assertThatThrownBy(() -> service.uploadDocument(command))
+            .isExactlyInstanceOf(RuntimeException.class)
+            .hasMessage("database unavailable");
+        verifyNoInteractions(eventOutbox);
     }
 }
