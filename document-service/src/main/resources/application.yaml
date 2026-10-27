@@ -17,9 +17,19 @@ spring:
       max-file-size: 50MB     # = FileSize.MAX_SIZE_BYTES; deliberate (Sonar S5693), DoS risk to be mitigated by auth + gateway rate limiting
       max-request-size: 51MB  # Slightly above, for the multipart headers
 
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+
 covena:
   storage:
     local:
       base-dir: ${COVENA_STORAGE_DIR:${user.home}/covena-data/documents}
-
-
+  outbox:
+    relay:
+      enabled: true
+      fixed-delay: 1s
+      batch-size: 100
