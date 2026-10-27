@@ -5,9 +5,11 @@ import io.covena.document.application.port.in.ContentSource;
 import io.covena.document.application.port.in.UploadDocumentCommand;
 import io.covena.document.application.port.in.UploadDocumentUseCase;
 import io.covena.document.application.port.in.UploadedDocumentResult;
+import io.covena.document.application.port.out.DocumentEventOutbox;
 import io.covena.document.application.port.out.DocumentRepository;
 import io.covena.document.domain.Document;
 import io.covena.document.domain.DocumentId;
+import io.covena.document.domain.DocumentUploaded;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -16,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
@@ -30,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @SpringBootTest
@@ -37,6 +41,7 @@ import static org.mockito.Mockito.verify;
 class UploadDocumentRollbackIT {
     private static final byte[] PDF_CONTENT = "%PDF-1.7\nAcesta este un fișier de test".getBytes(StandardCharsets.UTF_8);
     private static final String TEST_FILE_NAME = "contract.pdf";
+    private static final String QUERY_OUTBOX_EVENTS = "SELECT COUNT(*) FROM outbox_events WHERE aggregate_id = ?";
 
     @TempDir
     static Path tempDir;
@@ -48,9 +53,13 @@ class UploadDocumentRollbackIT {
 
     @MockitoSpyBean
     private DocumentRepository documentRepository;
+    @MockitoSpyBean
+    private DocumentEventOutbox eventOutbox;
 
     @Autowired
     UploadDocumentUseCase useCase;
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private ContentSource source;
     private final ArgumentCaptor<Document> documentCaptor = ArgumentCaptor.forClass(Document.class);
@@ -58,6 +67,10 @@ class UploadDocumentRollbackIT {
     @BeforeEach
     void setUp() {
         source = () -> new ByteArrayInputStream(PDF_CONTENT);
+    }
+
+    private Integer outboxRowsFor(UUID documentId) {
+        return jdbcTemplate.queryForObject(QUERY_OUTBOX_EVENTS, Integer.class, documentId);
     }
 
     @Test
@@ -74,6 +87,8 @@ class UploadDocumentRollbackIT {
         var testFilePath = tempDir.resolve(uuid.toString());
         assertThat(documentRepository.findById(id)).get().extracting(Document::getId).isEqualTo(id);
         assertThat(testFilePath).hasBinaryContent(PDF_CONTENT);
+        assertThat(outboxRowsFor(uuid)).isEqualTo(1);
+        verify(eventOutbox).append(any(DocumentUploaded.class));
     }
 
     @Test
@@ -96,5 +111,31 @@ class UploadDocumentRollbackIT {
         UUID uuid = id.uuidValue();
         var testFilePath = tempDir.resolve(uuid.toString());
         assertThat(testFilePath).doesNotExist();
+        assertThat(outboxRowsFor(uuid)).isZero();
+        verify(eventOutbox, never()).append(any(DocumentUploaded.class));
+    }
+
+    @Test
+    void shouldRollBackDocumentWhenOutboxAppendFails() {
+        //given
+        var command = new UploadDocumentCommand(TEST_FILE_NAME, PDF_CONTENT.length, PDF.getMimeType(), source);
+        doThrow(new OptimisticLockingFailureException("simulated outbox database failure"))
+            .when(eventOutbox)
+            .append(any(DocumentUploaded.class));
+
+        //when/then
+        assertThatThrownBy(() -> useCase.uploadDocument(command))
+            .isInstanceOf(OptimisticLockingFailureException.class)
+            .hasMessage("simulated outbox database failure");
+
+        //then
+        verify(documentRepository).save(documentCaptor.capture());
+        Document document = documentCaptor.getValue();
+        DocumentId id = document.getId();
+        UUID uuid = id.uuidValue();
+        var testFilePath = tempDir.resolve(uuid.toString());
+        assertThat(testFilePath).doesNotExist();
+        assertThat(documentRepository.findById(id)).isEmpty();
+        assertThat(outboxRowsFor(uuid)).isZero();
     }
 }
