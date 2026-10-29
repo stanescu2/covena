@@ -14,7 +14,7 @@ import java.nio.file.Path;
  * (all beans wired, configuration valid, Flyway migrations applied from scratch,
  * JPA entities validated against the migrated schema).
  */
-@SpringBootTest
+@SpringBootTest(properties = "covena.outbox.relay.enabled=false")
 @Import(TestcontainersConfiguration.class)
 class DocumentServiceApplicationIT {
     @TempDir
