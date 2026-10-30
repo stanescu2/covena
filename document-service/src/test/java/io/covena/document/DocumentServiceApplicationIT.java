@@ -13,9 +13,12 @@ import java.nio.file.Path;
  * Smoke test: the full application context starts against a fresh database
  * (all beans wired, configuration valid, Flyway migrations applied from scratch,
  * JPA entities validated against the migrated schema).
+ * <p>
+ * The Kafka broker is available during the test run, and the application is able
+ * to create the required topic at startup.
  */
 @SpringBootTest
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, KafkaTestcontainersConfiguration.class})
 class DocumentServiceApplicationIT {
     @TempDir
     static Path tempDir;

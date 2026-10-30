@@ -7,6 +7,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -71,5 +72,10 @@ public class OutboxEventJpaEntity {
 
     public Instant getPublishedAt() {
         return publishedAt;
+    }
+
+    void markPublished(Instant publishedAt) {
+        Objects.requireNonNull(publishedAt, "Published at should not be null");
+        this.publishedAt = publishedAt;
     }
 }

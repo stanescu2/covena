@@ -36,7 +36,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-@SpringBootTest
+@SpringBootTest(properties = "covena.outbox.relay.enabled=false")
 @Import(TestcontainersConfiguration.class)
 class UploadDocumentRollbackIT {
     private static final byte[] PDF_CONTENT = "%PDF-1.7\nAcesta este un fișier de test".getBytes(StandardCharsets.UTF_8);
