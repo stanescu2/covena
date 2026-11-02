@@ -25,6 +25,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static io.covena.document.adapter.out.outbox.OutboxEventFixtures.DOCUMENT_UPLOADED;
 import static io.covena.document.adapter.out.outbox.OutboxEventFixtures.T1;
+import static io.covena.document.adapter.out.outbox.OutboxEventFixtures.T2;
 import static io.covena.document.adapter.out.outbox.OutboxEventFixtures.eventCreatedAt;
 import static io.covena.document.adapter.out.outbox.OutboxRelay.EVENT_ID_HEADER;
 import static io.covena.document.adapter.out.outbox.OutboxRelay.EVENT_TYPE_HEADER;
@@ -33,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -56,6 +58,10 @@ class OutboxRelayTest {
     @Captor
     private ArgumentCaptor<ProducerRecord<String, String>> producerRecordCaptor;
 
+    private static ProducerRecord<String, String> anyRecord() {
+        return any();
+    }
+
     @BeforeEach
     void setUp() {
         outboxRelay = new OutboxRelay(outboxEventRepository, kafkaOperations,
@@ -67,7 +73,7 @@ class OutboxRelayTest {
     }
 
     private void givenKafkaAcceptsEverything() {
-        when(kafkaOperations.send(any(ProducerRecord.class)))
+        when(kafkaOperations.send(anyRecord()))
             .thenReturn(CompletableFuture.completedFuture(null));
     }
 
@@ -136,7 +142,7 @@ class OutboxRelayTest {
         //given
         var event = eventCreatedAt(T1);
         givenLockedEvents(List.of(event));
-        when(kafkaOperations.send(any(ProducerRecord.class))).thenReturn(CompletableFuture.failedFuture(new KafkaException(
+        when(kafkaOperations.send(anyRecord())).thenReturn(CompletableFuture.failedFuture(new KafkaException(
             "broker down")));
 
         //when/then
@@ -158,4 +164,49 @@ class OutboxRelayTest {
         //then
         verifyNoInteractions(kafkaOperations);
     }
+
+    @Test
+    void shouldSendAndMarkEveryEventInTheBatch() {
+        //given
+        var event1 = eventCreatedAt(T1);
+        var event2 = eventCreatedAt(T2);
+        givenLockedEvents(List.of(event1, event2));
+        givenKafkaAcceptsEverything();
+
+        //when
+        outboxRelay.publishPendingEvents();
+
+        //then
+        assertThat(event1.getPublishedAt()).isEqualTo(NOW);
+        assertThat(event2.getPublishedAt()).isEqualTo(NOW);
+        verify(kafkaOperations, times(2)).send(producerRecordCaptor.capture());
+        var records = producerRecordCaptor.getAllValues();
+        var keys = records.stream().map(ProducerRecord::key).toList();
+        assertThat(keys).containsExactly(event1.getAggregateId().toString(), event2.getAggregateId().toString());
+    }
+
+    @Test
+    void shouldNotMarkAnyEventWhenKafkaRejectsTheFirst() {
+        //given
+        var event1 = eventCreatedAt(T1);
+        var event2 = eventCreatedAt(T2);
+        givenLockedEvents(List.of(event1, event2));
+        when(kafkaOperations.send(anyRecord())).thenAnswer(invocation -> {
+            var producerRecord = (ProducerRecord<?, ?>) invocation.getArgument(0);
+            if (producerRecord.key().equals(event1.getAggregateId().toString())) {
+                return CompletableFuture.failedFuture(new KafkaException("broker down"));
+            } else {
+                return CompletableFuture.completedFuture(null);
+            }
+        });
+
+        //when/then
+        assertThatThrownBy(() -> outboxRelay.publishPendingEvents())
+            .isExactlyInstanceOf(OutboxPublishException.class)
+            .hasMessage("Kafka rejected an outbox event")
+            .hasCauseInstanceOf(KafkaException.class);
+        assertThat(event1.getPublishedAt()).isNull();
+        assertThat(event2.getPublishedAt()).isNull();
+    }
 }
+
