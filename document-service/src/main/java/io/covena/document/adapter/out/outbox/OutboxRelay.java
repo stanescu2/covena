@@ -3,7 +3,6 @@ package io.covena.document.adapter.out.outbox;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.core.KafkaOperations;
-import org.springframework.kafka.support.SendResult;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -46,14 +45,17 @@ class OutboxRelay {
     void publishPendingEvents() {
         transactionTemplate.executeWithoutResult(status -> {
             var events = outboxEventRepository.lockNextUnpublished(outboxRelayProperties.batchSize());
-            for (OutboxEventJpaEntity event : events) {
-                await(kafkaOperations.send(toRecord(event)));
-                event.markPublished(clock.instant());
-            }
+            var futures = events
+                .stream()
+                .map(event -> kafkaOperations.send(toRecord(event)))
+                .toArray(CompletableFuture[]::new);
+            await(CompletableFuture.allOf(futures));
+            var publishedAt = clock.instant();
+            events.forEach(event -> event.markPublished(publishedAt));
         });
     }
 
-    private void await(CompletableFuture<SendResult<String, String>> future) {
+    private void await(CompletableFuture<?> future) {
         try {
             future.get(SEND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
