@@ -35,3 +35,8 @@ covena:
       enabled: true
       fixed-delay: 1s
       batch-size: 100
+    cleanup:
+      enabled: true
+      retention: 7d
+      cron: "0 0 0 * * ?" # Run at midnight every day
+
