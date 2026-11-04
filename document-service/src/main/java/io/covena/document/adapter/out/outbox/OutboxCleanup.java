@@ -5,25 +5,26 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionOperations;
 
 import java.time.Clock;
+import java.util.Objects;
 
 @ConditionalOnProperty(name = "covena.outbox.cleanup.enabled", havingValue = "true")
 @Component
 class OutboxCleanup {
     private static final Logger logger = LoggerFactory.getLogger(OutboxCleanup.class);
     private final OutboxEventJpaRepository outboxEventRepository;
-    private final TransactionTemplate transactionTemplate;
+    private final TransactionOperations transactionOperations;
     private final Clock clock;
     private final OutboxCleanupProperties outboxCleanupProperties;
 
     OutboxCleanup(OutboxEventJpaRepository outboxEventRepository,
-                  TransactionTemplate transactionTemplate,
+                  TransactionOperations transactionOperations,
                   Clock clock,
                   OutboxCleanupProperties outboxCleanupProperties) {
         this.outboxEventRepository = outboxEventRepository;
-        this.transactionTemplate = transactionTemplate;
+        this.transactionOperations = transactionOperations;
         this.clock = clock;
         this.outboxCleanupProperties = outboxCleanupProperties;
     }
@@ -31,8 +32,10 @@ class OutboxCleanup {
     @Scheduled(cron = "${covena.outbox.cleanup.cron}")
     void deleteExpiredEvents() {
         var threshold = clock.instant().minus(outboxCleanupProperties.retention());
-        Integer deleted = transactionTemplate.execute(status -> outboxEventRepository.deletePublishedBefore(threshold));
-        if (deleted != null && deleted > 0) {
+        int deleted = Objects.requireNonNullElse(
+            transactionOperations.execute(status -> outboxEventRepository.deletePublishedBefore(threshold)),
+            0);
+        if (deleted > 0) {
             logger.info("Deleted {} published outbox events older than {}", deleted, threshold);
         }
     }

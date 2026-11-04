@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionOperations;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
@@ -25,25 +25,25 @@ class OutboxRelay {
 
     private final OutboxEventJpaRepository outboxEventRepository;
     private final KafkaOperations<String, String> kafkaOperations;
-    private final TransactionTemplate transactionTemplate;
+    private final TransactionOperations transactionOperations;
     private final Clock clock;
     private final OutboxRelayProperties outboxRelayProperties;
 
     OutboxRelay(OutboxEventJpaRepository outboxEventRepository,
                 KafkaOperations<String, String> kafkaOperations,
-                TransactionTemplate transactionTemplate,
+                TransactionOperations transactionOperations,
                 Clock clock,
                 OutboxRelayProperties outboxRelayProperties) {
         this.outboxEventRepository = outboxEventRepository;
         this.kafkaOperations = kafkaOperations;
-        this.transactionTemplate = transactionTemplate;
+        this.transactionOperations = transactionOperations;
         this.clock = clock;
         this.outboxRelayProperties = outboxRelayProperties;
     }
 
     @Scheduled(fixedDelayString = "${covena.outbox.relay.fixed-delay}")
     void publishPendingEvents() {
-        transactionTemplate.executeWithoutResult(status -> {
+        transactionOperations.executeWithoutResult(status -> {
             var events = outboxEventRepository.lockNextUnpublished(outboxRelayProperties.batchSize());
             var futures = events
                 .stream()

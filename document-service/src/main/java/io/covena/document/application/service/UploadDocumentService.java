@@ -16,7 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionOperations;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -34,7 +34,7 @@ public class UploadDocumentService implements UploadDocumentUseCase {
     private final ContentTypeDetector detector;
     private final DocumentRepository documentRepository;
     private final DocumentEventOutbox eventOutbox;
-    private final TransactionTemplate transactionTemplate;
+    private final TransactionOperations transactionOperations;
     private final ApplicationEventPublisher eventPublisher;
 
     public UploadDocumentService(DocumentContentStorage storage,
@@ -42,14 +42,14 @@ public class UploadDocumentService implements UploadDocumentUseCase {
                                  DocumentRepository documentRepository,
                                  Clock clock,
                                  DocumentEventOutbox eventOutbox,
-                                 TransactionTemplate transactionTemplate,
+                                 TransactionOperations transactionOperations,
                                  ApplicationEventPublisher eventPublisher) {
         this.storage = storage;
         this.detector = detector;
         this.clock = clock;
         this.documentRepository = documentRepository;
         this.eventOutbox = eventOutbox;
-        this.transactionTemplate = transactionTemplate;
+        this.transactionOperations = transactionOperations;
         this.eventPublisher = eventPublisher;
     }
 
@@ -74,7 +74,7 @@ public class UploadDocumentService implements UploadDocumentUseCase {
         storage.store(document.getId(), command.content());
 
         var event = DocumentUploaded.from(document);
-        transactionTemplate.executeWithoutResult(status -> {
+        transactionOperations.executeWithoutResult(status -> {
             eventPublisher.publishEvent(new DocumentContentStored(document.getId()));
             documentRepository.save(document);
             eventOutbox.append(event);

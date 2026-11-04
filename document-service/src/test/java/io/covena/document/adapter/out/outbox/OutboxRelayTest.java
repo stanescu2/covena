@@ -11,8 +11,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaOperations;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionOperations;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
@@ -33,7 +32,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -43,7 +41,7 @@ import static org.mockito.Mockito.when;
 class OutboxRelayTest {
     private static final Instant NOW = Instant.parse("2026-10-14T10:00:00Z");
 
-    private final TransactionTemplate transactionTemplate = new TransactionTemplate(mock(PlatformTransactionManager.class));
+    private final TransactionOperations transactionOperations = TransactionOperations.withoutTransaction();
     private final OutboxRelayProperties properties =
         new OutboxRelayProperties(true, Duration.ofSeconds(1), 50);
     private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
@@ -65,7 +63,7 @@ class OutboxRelayTest {
     @BeforeEach
     void setUp() {
         outboxRelay = new OutboxRelay(outboxEventRepository, kafkaOperations,
-            transactionTemplate, clock, properties);
+            transactionOperations, clock, properties);
     }
 
     private void givenLockedEvents(List<OutboxEventJpaEntity> events) {
