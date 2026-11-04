@@ -16,7 +16,7 @@ import static io.covena.document.adapter.out.outbox.OutboxEventFixtures.T3;
 import static io.covena.document.adapter.out.outbox.OutboxEventFixtures.eventCreatedAt;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DataJpaTest(showSql = false)
+@DataJpaTest(showSql = true)
 @Import({TestcontainersConfiguration.class})
 class OutboxEventJpaRepositoryIT {
     @Autowired
@@ -134,5 +134,71 @@ class OutboxEventJpaRepositoryIT {
         assertThat(reload(locked.getId()))
             .extracting(OutboxEventJpaEntity::getPublishedAt)
             .isEqualTo(T3);
+    }
+
+    @Test
+    void shouldDeletePublishedEventsBeforeThreshold() {
+        //given
+        var published = eventCreatedAt(T1);
+        published.markPublished(T1);
+        testEntityManager.persist(published);
+        flushAndClear();
+        //when
+        var deleted = outboxEventJpaRepository.deletePublishedBefore(T2);
+        flushAndClear();
+
+        //then
+        assertThat(deleted).isEqualTo(1);
+        assertThat(outboxEventJpaRepository.findById(published.getId())).isEmpty();
+    }
+
+    @Test
+    void shouldKeepEventsPublishedAfterThreshold() {
+        //given
+        var published = eventCreatedAt(T3);
+        published.markPublished(T3);
+        testEntityManager.persist(published);
+        flushAndClear();
+
+        //when
+        var deleted = outboxEventJpaRepository.deletePublishedBefore(T2);
+        flushAndClear();
+
+        //then
+        assertThat(deleted).isZero();
+        assertThat(outboxEventJpaRepository.findById(published.getId())).isPresent();
+    }
+
+    @Test
+    void shouldKeepEventPublishedExactlyAtThreshold() {
+        //given
+        var published = eventCreatedAt(T2);
+        published.markPublished(T2);
+        testEntityManager.persist(published);
+        flushAndClear();
+
+        //when
+        var deleted = outboxEventJpaRepository.deletePublishedBefore(T2);
+        flushAndClear();
+
+        //then
+        assertThat(deleted).isZero();
+        assertThat(outboxEventJpaRepository.findById(published.getId())).isPresent();
+    }
+
+    @Test
+    void shouldNeverDeleteUnpublishedEvents() {
+        //given
+        var unpublished = eventCreatedAt(T1);
+        testEntityManager.persist(unpublished);
+        flushAndClear();
+
+        //when
+        var deleted = outboxEventJpaRepository.deletePublishedBefore(T2);
+        flushAndClear();
+
+        //then
+        assertThat(deleted).isZero();
+        assertThat(outboxEventJpaRepository.findById(unpublished.getId())).isPresent();
     }
 }
