@@ -7,8 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionOperations;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -17,14 +16,13 @@ import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith({MockitoExtension.class, OutputCaptureExtension.class})
 class OutboxCleanupTest {
     private static final Instant NOW = Instant.parse("2026-10-14T10:00:00Z");
-    private final TransactionTemplate transactionTemplate = new TransactionTemplate(mock(PlatformTransactionManager.class));
+    private final TransactionOperations transactionOperations = TransactionOperations.withoutTransaction();
     private final OutboxCleanupProperties outboxCleanupProperties = new OutboxCleanupProperties(true,
         Duration.ofDays(7),
         "0 0 0 * * ?");
@@ -38,7 +36,7 @@ class OutboxCleanupTest {
     @BeforeEach
     void setUp() {
         outboxCleanup = new OutboxCleanup(outboxEventRepository,
-            transactionTemplate,
+            transactionOperations,
             clock,
             outboxCleanupProperties);
     }

@@ -24,8 +24,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionOperations;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
@@ -39,7 +38,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -66,7 +64,7 @@ class UploadDocumentServiceTest {
     private DocumentEventOutbox eventOutbox;
 
     private UploadDocumentService service;
-    private final TransactionTemplate transactionTemplate = new TransactionTemplate(mock(PlatformTransactionManager.class));
+    private final TransactionOperations transactionOperations = TransactionOperations.withoutTransaction();
     private ContentSource source;
 
     @Captor
@@ -89,7 +87,7 @@ class UploadDocumentServiceTest {
             documentRepository,
             clock,
             eventOutbox,
-            transactionTemplate,
+            transactionOperations,
             eventPublisher);
         source = () -> new ByteArrayInputStream(CONTENT);
     }
@@ -170,7 +168,7 @@ class UploadDocumentServiceTest {
             documentRepository,
             clockWithNanos,
             eventOutbox,
-            transactionTemplate,
+            transactionOperations,
             eventPublisher);
         givenDetectedMimeType(PDF.getMimeType());
 
