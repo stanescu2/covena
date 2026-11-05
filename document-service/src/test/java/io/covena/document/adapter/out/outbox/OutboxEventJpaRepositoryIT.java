@@ -16,7 +16,7 @@ import static io.covena.document.adapter.out.outbox.OutboxEventFixtures.T3;
 import static io.covena.document.adapter.out.outbox.OutboxEventFixtures.eventCreatedAt;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DataJpaTest(showSql = true)
+@DataJpaTest(showSql = false)
 @Import({TestcontainersConfiguration.class})
 class OutboxEventJpaRepositoryIT {
     @Autowired

@@ -18,8 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class DocumentIdTest {
     @Test
     void shouldRejectNullUuid() {
-        var ex = assertThrows(IllegalArgumentException.class, () -> new DocumentId(null));
-        assertEquals("UUID cannot be null", ex.getMessage());
+        var ex = assertThrows(NullPointerException.class, () -> new DocumentId(null));
+        assertEquals("UUID should not be null", ex.getMessage());
     }
 
     @Test

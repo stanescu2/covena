@@ -3,8 +3,8 @@ package io.covena.document.domain;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EmptySource;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.Instant;
@@ -174,12 +174,21 @@ class DocumentTest {
     }
 
     @ParameterizedTest
-    @NullAndEmptySource
+    @EmptySource
     @ValueSource(strings = {"\t", " "})
     void shouldRejectBlankFailureReasonAndKeepStatus(String failureReason) {
         Document document = processingDocument();
-        assertThrows(IllegalArgumentException.class, () -> document.markFailed(failureReason));
+        var ex = assertThrows(IllegalArgumentException.class, () -> document.markFailed(failureReason));
         assertEquals(PROCESSING, document.getStatus());
+        assertEquals("Failure reason must not be blank", ex.getMessage());
+    }
+
+    @Test
+    void shouldRejectNullFailureReasonAndKeepStatus() {
+        Document document = processingDocument();
+        var ex = assertThrows(NullPointerException.class, () -> document.markFailed(null));
+        assertEquals(PROCESSING, document.getStatus());
+        assertEquals("Failure reason should not be null", ex.getMessage());
     }
 
     @Test
@@ -290,11 +299,19 @@ class DocumentTest {
     }
 
     @ParameterizedTest
-    @NullAndEmptySource
+    @EmptySource
     @ValueSource(strings = {" ", "\t"})
-    void shouldRejectRestoringFailedDocumentWithoutReason(String failureReason) {
+    void shouldRejectRestoringFailedDocumentWithEmptyReason(String failureReason) {
         Executable restoreCall = () -> restoreTestDocument(DocumentId.newId(), FAILED, failureReason);
-        assertThrows(IllegalArgumentException.class, restoreCall);
+        var ex = assertThrows(IllegalArgumentException.class, restoreCall);
+        assertEquals("Failure reason must not be blank", ex.getMessage());
+    }
+
+    @Test
+    void shouldRejectRestoringFailedDocumentWithNullReason() {
+        Executable restoreCall = () -> restoreTestDocument(DocumentId.newId(), FAILED, null);
+        var ex = assertThrows(NullPointerException.class, restoreCall);
+        assertEquals("Failure reason should not be null", ex.getMessage());
     }
 
     @ParameterizedTest
