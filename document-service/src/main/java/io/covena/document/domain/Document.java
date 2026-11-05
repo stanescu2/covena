@@ -127,8 +127,9 @@ public class Document {
     }
 
     private static void validateFailureReason(String reason) {
-        if (reason == null || reason.isBlank()) {
-            throw new IllegalArgumentException("Failure reason must not be null or blank");
+        Objects.requireNonNull(reason, "Failure reason should not be null");
+        if (reason.isBlank()) {
+            throw new IllegalArgumentException("Failure reason must not be blank");
         }
     }
 
