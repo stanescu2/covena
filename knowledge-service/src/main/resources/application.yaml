@@ -1,0 +1,14 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: knowledge-service
+  datasource:
+    url: jdbc:postgresql://localhost:5433/knowledge
+    username: ${DB_USERNAME:covena}
+    password: ${DB_PASSWORD:covena}
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
